@@ -126,7 +126,7 @@ where
 macro_rules! impl_from {
     ($($n: expr => $ty: ty),*) => {
         $(
-            impl<T> From<[T; $n]> for GenericArray<T, $ty> {
+            impl<T> From<[T; $n]> for GenericArray<T, $ty> where T: abi_stable::StableAbi {
                 #[inline(always)]
                 fn from(arr: [T; $n]) -> Self {
                     unsafe { $crate::transmute(arr) }
@@ -134,21 +134,21 @@ macro_rules! impl_from {
             }
 
             #[cfg(relaxed_coherence)]
-            impl<T> From<GenericArray<T, $ty>> for [T; $n] {
+            impl<T> From<GenericArray<T, $ty>> for [T; $n] where T: abi_stable::StableAbi {
                 #[inline(always)]
                 fn from(sel: GenericArray<T, $ty>) -> [T; $n] {
                     unsafe { $crate::transmute(sel) }
                 }
             }
 
-            impl<'a, T> From<&'a [T; $n]> for &'a GenericArray<T, $ty> {
+            impl<'a, T> From<&'a [T; $n]> for &'a GenericArray<T, $ty> where T: abi_stable::StableAbi {
                 #[inline]
                 fn from(slice: &[T; $n]) -> &GenericArray<T, $ty> {
                     unsafe { &*(slice.as_ptr() as *const GenericArray<T, $ty>) }
                 }
             }
 
-            impl<'a, T> From<&'a mut [T; $n]> for &'a mut GenericArray<T, $ty> {
+            impl<'a, T> From<&'a mut [T; $n]> for &'a mut GenericArray<T, $ty> where T: abi_stable::StableAbi {
                 #[inline]
                 fn from(slice: &mut [T; $n]) -> &mut GenericArray<T, $ty> {
                     unsafe { &mut *(slice.as_mut_ptr() as *mut GenericArray<T, $ty>) }
@@ -163,14 +163,14 @@ macro_rules! impl_from {
                 }
             }
 
-            impl<T> AsRef<[T; $n]> for GenericArray<T, $ty> {
+            impl<T> AsRef<[T; $n]> for GenericArray<T, $ty> where T: abi_stable::StableAbi {
                 #[inline]
                 fn as_ref(&self) -> &[T; $n] {
                     unsafe { $crate::transmute(self) }
                 }
             }
 
-            impl<T> AsMut<[T; $n]> for GenericArray<T, $ty> {
+            impl<T> AsMut<[T; $n]> for GenericArray<T, $ty> where T: abi_stable::StableAbi {
                 #[inline]
                 fn as_mut(&mut self) -> &mut [T; $n] {
                     unsafe { $crate::transmute(self) }

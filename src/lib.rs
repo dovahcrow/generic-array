@@ -81,6 +81,8 @@ extern crate bincode;
 
 pub extern crate typenum;
 
+extern crate abi_stable;
+
 mod hex;
 mod impls;
 
@@ -90,9 +92,10 @@ mod impl_serde;
 #[cfg(feature = "zeroize")]
 mod impl_zeroize;
 
+use abi_stable::StableAbi;
 use core::iter::FromIterator;
 use core::marker::PhantomData;
-use core::mem::{MaybeUninit, ManuallyDrop};
+use core::mem::{ManuallyDrop, MaybeUninit};
 use core::ops::{Deref, DerefMut};
 use core::{mem, ptr, slice};
 use typenum::bit::{B0, B1};
@@ -111,10 +114,13 @@ use self::sequence::*;
 /// Trait making `GenericArray` work, marking types to be used as length of an array
 pub unsafe trait ArrayLength<T>: Unsigned {
     /// Associated type representing the array type for the number
-    type ArrayType;
+    type ArrayType: StableAbi;
 }
 
-unsafe impl<T> ArrayLength<T> for UTerm {
+unsafe impl<T> ArrayLength<T> for UTerm
+where
+    T: StableAbi,
+{
     #[doc(hidden)]
     type ArrayType = [T; 0];
 }
@@ -123,6 +129,7 @@ unsafe impl<T> ArrayLength<T> for UTerm {
 #[allow(dead_code)]
 #[repr(C)]
 #[doc(hidden)]
+#[derive(StableAbi)]
 pub struct GenericArrayImplEven<T, U> {
     parent1: U,
     parent2: U,
@@ -145,6 +152,7 @@ impl<T: Copy, U: Copy> Copy for GenericArrayImplEven<T, U> {}
 #[allow(dead_code)]
 #[repr(C)]
 #[doc(hidden)]
+#[derive(StableAbi)]
 pub struct GenericArrayImplOdd<T, U> {
     parent1: U,
     parent2: U,
@@ -163,12 +171,12 @@ impl<T: Clone, U: Clone> Clone for GenericArrayImplOdd<T, U> {
 
 impl<T: Copy, U: Copy> Copy for GenericArrayImplOdd<T, U> {}
 
-unsafe impl<T, N: ArrayLength<T>> ArrayLength<T> for UInt<N, B0> {
+unsafe impl<T: StableAbi, N: ArrayLength<T>> ArrayLength<T> for UInt<N, B0> {
     #[doc(hidden)]
     type ArrayType = GenericArrayImplEven<T, N::ArrayType>;
 }
 
-unsafe impl<T, N: ArrayLength<T>> ArrayLength<T> for UInt<N, B1> {
+unsafe impl<T: StableAbi, N: ArrayLength<T>> ArrayLength<T> for UInt<N, B1> {
     #[doc(hidden)]
     type ArrayType = GenericArrayImplOdd<T, N::ArrayType>;
 }
@@ -176,6 +184,7 @@ unsafe impl<T, N: ArrayLength<T>> ArrayLength<T> for UInt<N, B1> {
 /// Struct representing a generic array - `GenericArray<T, N>` works like [T; N]
 #[allow(dead_code)]
 #[repr(transparent)]
+#[derive(StableAbi)]
 pub struct GenericArray<T, U: ArrayLength<T>> {
     data: U::ArrayType,
 }
@@ -233,7 +242,10 @@ impl<T, N: ArrayLength<T>> ArrayBuilder<T, N> {
     #[doc(hidden)]
     #[inline]
     pub unsafe fn iter_position(&mut self) -> (slice::IterMut<T>, &mut usize) {
-        ((&mut *self.array.as_mut_ptr()).iter_mut(), &mut self.position)
+        (
+            (&mut *self.array.as_mut_ptr()).iter_mut(),
+            &mut self.position,
+        )
     }
 
     /// When done writing (assuming all elements have been written to),
